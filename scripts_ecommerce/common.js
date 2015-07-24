@@ -1,5 +1,5 @@
 var wp = {
-	api: 'http://192.168.1.100:8080/json/',
+	api: 'http://localhost:8080/json/',
 	uri_scripts: 'scripts_ecommerce/',
 	uri_styles: 'styles_ecommerce/',
 	ver: '800-000-1616.95.20150622',
@@ -52,14 +52,26 @@ function callApi(apiName, default_params_value){
 	}// end while setting field parameters
 
 	getData(apiName, parameters, function(data){
-		var field_name = api_params[data.apiName]['params_out']['field_name'];
-		api_params[data.apiName]['params_out']['field_data'] = data[field_name];
+		if (data.wpCode === "999") {
+			
+			var field_name = api_params[data.apiName]['params_out']['field_name'];
+			api_params[data.apiName]['params_out']['field_data'] = data[field_name];
 
-		if(data[field_name].length < 1){
+			if(data[field_name].length < 1){
+				$('[data-api-name="'+apiName+'"]').remove();
+			}else{
+				fillResultToHtml(data.apiName);
+			}
+
+		} else {
+			console.log('%c Error when requesting to "' + apiName+ '". ' + 'Please check your parameters or connection. ', dev.log.error);
+
+			//FIXME keluarin notifikasi kalau ada error dari belakang
+			console.log("apiName: "+apiName+", "+data.wpCode+": "+data.wpMessage);
+
 			$('[data-api-name="'+apiName+'"]').remove();
-		}else{
-			fillResultToHtml(data.apiName);
-		}
+		}// end else if 999
+		
 	});// end getData
 
 	console.log('callApi finished...');
@@ -124,6 +136,9 @@ function fillResultToHtml(apiName){
 						}// end while indexFieldLink
 						hrefNew = hrefNew.substring(0, (hrefNew.length-1) );
 						$thisApiField.attr("href", hrefNew);
+					}
+					else if($thisApiField.prop("tagName") == "INPUT"){
+						$thisApiField.attr("value", field_data[fieldNameInElement]);
 					}else{
 						if(field_data[fieldNameInElement])
 							$thisApiField.text(field_data[fieldNameInElement]);
@@ -368,19 +383,11 @@ function getData(apiName, parameters, callback) {
 	request.done(function(data, status, xhr) {
 		console.log("data.wpCode: "+data.wpCode);
 		data.apiName = apiName;
-
-		if (data.wpCode == 999) {
-			if (typeof(callback) == "function") {
-				callback(data);
-			}
-		} else {
-			console.log('%c Error when requesting to "' + apiName+ '". ' + 'Please check your parameters or connection. ', dev.log.error);
-
-			//FIXME keluarin notifikasi kalau ada error dari belakang
-			console.log("apiName: "+apiName+", "+data.wpCode+": "+data.wpMessage);
-
-			$('[data-api-name="'+apiName+'"]').remove();
-		}// end else if 999
+		
+		if (typeof(callback) == "function") {
+			callback(data);
+		}		
+		
 	})// end request.done
 
 	request.fail(function(xhr, status, error) {
@@ -389,10 +396,19 @@ function getData(apiName, parameters, callback) {
 		// this is very bad. either server not responding or failed security check
 		// FIXME if user hasnt login yet, it still fail. this affects the error-handling.
 		// FIXME if user hasnt logined yet, must reply with wpCode!!!
+		// bisa bedain gak yah di belakang, antara yg musti login sama yg beneran error. mungkin harus oprek framework ofbiz dikit
 
 		// window.location = "error.html";
 
 		// $('[data-api-name="'+apiName+'"]').remove();
+		var data = {};
+		data.wpCode = "-1";
+		data.wpMessage = "Fatal Error";
+		
+		if (typeof(callback) == "function") {
+			callback(data);
+		}		
+		
 	})
 }// end getData
 
@@ -434,7 +450,7 @@ function registerNewDevice(ver, drid, callback){
 		success: function(response, status, xhr) {
 			console.log("registerNewDevice responded...");
 
-			if (response.wpCode == 999) {
+			if (response.wpCode === 999) {
 				console.log("now writing to local storage");
 
 				localStorage.setItem("pdid",response.pdid);
@@ -466,11 +482,9 @@ function registerNewDevice(ver, drid, callback){
 $( document ).on( "pagecontainershow", function( event, ui ) {
 
 	if(!Modernizr.localstorage){
-		alert("LocalStorage NOT SUPPORTED");
-		//window.location = "error.html";
+		window.location = "not_supported.html";
 	}
 
-	console.log("window.localStorage is available");
 	console.log("wp.api: "+wp.api);
 	console.log("wp.ver: "+wp.ver);
 
@@ -486,24 +500,95 @@ $( document ).on( "pagecontainershow", function( event, ui ) {
 		registerNewDevice(wp.ver, drid, function(){
 			parsePage();
 		});
-		console.log("di bawah registerNewDevice");
 	}else{
-		console.log("pdid dan drid ada isinya");
 		parsePage();
-	}
+	}// end pdid drid null
 
+	$('[data-api-type="form"]').on("submit", function(e){
+		// FIXME submit button harusnya diTOGGLE!!! biar gak diclick 2x
+		e.preventDefault();
+		
+		// FIXME harusnya ada validasi dulu
+		
+		var $this = $(this);
+		var apiName = $this.attr('action');
+		
+		if(apiName){
+			console.log("action: "+apiName);
+
+			var parameters = {};
+
+			$($this).find('input, textarea, select').each(function(i, field) {
+
+			    console.log("field.type: "+field.type);
+			    
+				if (field.type == "radio" || field.type == "checkbox")
+	                parameters[field.name] = $(field).attr("checked");
+	            else
+				    parameters[field.name] = field.value;
+				
+			});// end $this find input
+			
+			parameters.pdid = localStorage['pdid'];
+			parameters.drid = localStorage['drid'];
+			parameters.dtk = localStorage['dtk'];
+
+			getData(apiName, parameters, function(data){
+				if(data.wpCode === "999") {
+					var nextPage = $this.data('api-nextpage');
+					if(nextPage){
+						console.log('ada nextpagenya: '+nextPage);
+					}else{
+						// FIXME keluarin notifikasi aja biar berasa
+						console.log('no nextpage');
+					}// end nextPage
+				}else{
+					// FIXME buat error handling
+					console.log('wpCode: '+data.wpCode+', wpMessage: '+data.wpMessage);
+					
+				}// end if wpCode 999	
+			});// end getData
+		};// end if apiName
+
+	});// end onsubmit
+	
+	
+	$('[data-api-type="button"]').on("click", function(){
+		// FIXME button harusnya diTOGGLE!!! biar gak diclick 2x
+		
+		var $this = $(this);
+		var apiName = $this.data('api-action');
+		
+		if(apiName){
+			console.log("action: "+apiName);
+
+			var parameters = {};
+			parameters.pdid = localStorage['pdid'];
+			parameters.drid = localStorage['drid'];
+			parameters.dtk = localStorage['dtk'];
+
+			getData(apiName, parameters, function(data){
+				if(data.wpCode === "999") {
+					var nextPage = $this.data('api-nextpage');
+					if(nextPage){
+						console.log('ada nextpagenya: '+nextPage);
+					}else{
+						// FIXME keluarin notifikasi aja biar berasa
+						console.log('no nextpage');
+					}// end nextPage
+				}else{
+					// FIXME buat error handling
+					console.log('wpCode: '+data.wpCode+', wpMessage: '+data.wpMessage);
+					
+				}// end if wpCode 999	
+			});// end getData
+		};// end if apiName
+	});// end onclick
+	
 }); // end document on pagecontainershow
 
 function parsePage(){
-
-	console.log("in parsePage");
-
 	wp.pageId = $('body').pagecontainer('getActivePage').prop('id');
-
-//	var currentURL = window.location.href;
-//	console.log("currentURL: "+currentURL);
-
-	console.log("ini show");
 
 	var $pageNow = $('#'+wp.pageId);
 	var apis = $pageNow.data('api-name');
@@ -521,8 +606,6 @@ function parsePage(){
 
 	$pageNow.removeAttr("data-api-name");
 	$pageNow.removeData("api-name");
-
-	console.log("*********checkkkkkk************");
 
 }; // end document on parsePage
 

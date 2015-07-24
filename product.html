@@ -27,7 +27,7 @@
 			</ul>
 		</div>
 		<div data-role="header" data-position="fixed">
-			<form class="ui-filterable">
+			<form class="ui-filterable"  data-api-type="form" action="ecmcSearch1">
 				<input data-type="search" />
 			</form>
 			<a data-role="none" href="#panel-menu">
@@ -45,7 +45,7 @@
 						<a data-role="none" href="profile.html">
 							<img src="images/s3/icon/user.png" />
 						</a>
-						<form class="ui-filterable">
+						<form class="ui-filterable" data-api-type="form" action="ecmcSearch2">
 							<input data-type="search" />
 						</form>
 						<a href="cart.html">
@@ -92,10 +92,21 @@
 												<h3 data-api-field="productName"></h3>
 												<p class="sub" data-api-field="brandName"></p>
 												Rp. <p class="price" data-api-field="productPrice">429.000</p>
-												<p class="discount" >( <span class="through">Rp. 479.000</span><span>, You save Rp. 50.000 )</span></p>
+												<p class="discount" >( Rp. <span class="through" data-api-field="productPriceBefore"></span>, You save Rp.<span data-api-field="productPriceSaved">50.000 )</span></p>
 												<p class="status available">Available</p>
-												<p class="status discount">Discount</p>
-												<b>Description:</b> <p class="desc" data-api-field="description"></p>
+												<p class="status discount" data-api-field="discAmount"></p>
+												<p class="desc" data-api-field="description"></p>
+												<form id="formAddToCart" data-api-type="form" action="ecmcAddBizProductToCart" data-api-nextpage="cart.html" >
+													<input type="hidden" name="bizProductId" data-api-field="bizProductId" />
+													<input type="text" name="fieldIseng" />
+													<input type="submit" value="Add to Cart"/>
+												</form>
+												<form id="formAddToWishList" data-api-type="form" action="ecmcAddBizProductToWishList">
+													<input type="hidden" name="bizProductId" data-api-field="bizProductId" />
+													<input type="submit" value="Add to WishList"/>
+												</form>
+												<button id="buttonCoba1" data-api-type="button" data-api-action="ecmcCobaButton">ini ada action</button>
+												<button id="buttonCoba2" data-api-type="button" >ini gak ada action</button>
 												<a href="cart.html" class="ui-btn ui-btn-inline ui-corner-all btn-orange">Add To Cart</a>
 												<a href="wishlist.html" class="ui-btn ui-btn-inline ui-corner-all btn-brown">Add To Wishlist</a>
 											</div>
@@ -132,6 +143,7 @@
 				</div>
 			</div>
 		</div>
+		
 	</div>
 </body>
 </html>
